@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, brl } from "../../api";
+import { api, ApiError, brl } from "../../api";
+import { useApp } from "../../context/AppContext";
 import OrderStatus from "../OrderStatus";
 
 export default function CustomersAdmin() {
@@ -51,12 +52,27 @@ export default function CustomersAdmin() {
 }
 
 function CustomerDetail({ id, onBack }) {
+  const { toast } = useApp();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api.adminCustomer(id).then(setData).catch(() => setError(true));
-  }, [id]);
+  const load = () => api.adminCustomer(id).then(setData).catch(() => setError(true));
+  useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const deleteDevice = async () => {
+    if (!window.confirm("Apagar a autorização de pagamento (PIX Open Finance) deste cliente? Ele precisará autorizar de novo para pagar por PIX.")) return;
+    setBusy(true);
+    try {
+      await api.adminDeleteDevice(id);
+      await load();
+      toast("Autorização de pagamento apagada");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Falha ao apagar a autorização", "err");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (error) return <p className="muted">Não foi possível carregar a ficha. <button className="btn btn--sm" onClick={onBack}>Voltar</button></p>;
   if (!data) return <p className="muted">Carregando ficha…</p>;
@@ -80,7 +96,16 @@ function CustomerDetail({ id, onBack }) {
               <Row k="CPF" v={c.cpf || "—"} />
               <Row k="Nascimento" v={c.birth_date ? new Date(c.birth_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"} />
               <Row k="Cliente desde" v={new Date(c.created_at).toLocaleDateString("pt-BR")} />
-              <Row k="Pagamento PIX" v={<span className={`badge ${devInfo[1]}`}>{devInfo[0]}</span>} />
+              <Row k="Pagamento PIX" v={
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                  <span className={`badge ${devInfo[1]}`}>{devInfo[0]}</span>
+                  {device.enrolled && (
+                    <button className="btn btn--ghost btn--sm" style={{ color: "var(--danger)" }} onClick={deleteDevice} disabled={busy}>
+                      {busy ? "apagando…" : "apagar autorização"}
+                    </button>
+                  )}
+                </span>
+              } />
             </dl>
           </div>
 

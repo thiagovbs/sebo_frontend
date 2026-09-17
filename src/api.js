@@ -123,6 +123,7 @@ export const api = {
   adminOrders: () => request(`/admin/orders`, { admin: true }),
   adminCustomers: () => request(`/admin/customers`, { admin: true }),
   adminCustomer: (id) => request(`/admin/customers/${id}`, { admin: true }),
+  adminDeleteDevice: (id) => request(`/admin/customers/${id}/device`, { method: "DELETE", admin: true }),
   getIntegration: () => request(`/admin/integration`, { admin: true }),
   updateIntegration: (body) => request(`/admin/integration`, { method: "PUT", body, admin: true }),
 };
