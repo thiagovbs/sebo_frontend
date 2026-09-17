@@ -110,7 +110,9 @@ export default function DeviceLink({ customerId, onRegistered, compact = false }
               <span className="badge badge--accent">selecionado</span>
             </div>
           </div>
-          <a className="btn btn--primary btn--block" href={bankAuthUrl(loginUrl)} target="_blank" rel="noreferrer">
+          {/* Mesma aba (sem target=_blank): ao concluir, a iniciadora devolve o
+              cliente para /conta?enroll=return e a jornada continua aqui. */}
+          <a className="btn btn--primary btn--block" href={bankAuthUrl(loginUrl)}>
             Continuar para o Sensedia Bank ↗
           </a>
           <button className="btn btn--block" onClick={recheck} disabled={busy}>

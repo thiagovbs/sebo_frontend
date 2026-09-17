@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, brl } from "../api";
 import { lookupCep } from "../cep";
 import { useApp } from "../context/AppContext";
@@ -10,6 +10,23 @@ import LoginForm from "../components/LoginForm";
 export default function Account() {
   const { customer, toast, openFinance, logout } = useApp();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Volta da autorização na iniciadora (jornada JSR). O DeviceLink abaixo já
+  // sincroniza o status; aqui só avisamos o cliente e limpamos a query para o
+  // toast não repetir num refresh.
+  useEffect(() => {
+    if (searchParams.get("enroll") !== "return") return;
+    const status = searchParams.get("status") || "";
+    if (status === "DEVICE_REGISTERED" || status === "REGISTERED") {
+      toast("Pagamento por PIX autorizado!");
+    } else if (status === "error") {
+      toast("Não foi possível concluir a autorização", "err");
+    } else {
+      toast("Voltando da autorização…");
+    }
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, toast]);
 
   if (!customer) {
     return (
