@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, brl } from "../api";
 import { useApp } from "../context/AppContext";
 import DeviceLink from "../components/DeviceLink";
 import PixQr from "../components/PixQr";
 
 export default function Checkout() {
-  const { customer, cart, refreshCart, openFinance } = useApp();
+  const { customer, cart, refreshCart, openFinance, toast } = useApp();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [paidOrder, setPaidOrder] = useState(null);
   const [pixOrder, setPixOrder] = useState(null); // PIX QR aguardando pagamento
@@ -17,6 +18,21 @@ export default function Checkout() {
   const [deviceReady, setDeviceReady] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
+
+  // Volta da jornada Open Finance com redirect: reconcilia o pedido pela
+  // iniciadora e mostra o desfecho (pago ou ainda aguardando).
+  const isReturn = searchParams.get("pay") === "return" && !!searchParams.get("order");
+  useEffect(() => {
+    if (!isReturn) return;
+    const orderId = searchParams.get("order");
+    api.confirmOpenFinance(orderId)
+      .then((o) => {
+        if (o.status === "PAID") { setPaidOrder(o); toast("Pagamento confirmado!"); }
+        else { setPixOrder(o); toast("Pagamento não concluído — tente de novo ou pague pelo código.", "err"); }
+      })
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Falha ao confirmar o pagamento"))
+      .finally(() => setSearchParams({}, { replace: true }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Método padrão: prefere PIX QR (mais simples); senão JSR.
   useEffect(() => {
@@ -54,6 +70,25 @@ export default function Checkout() {
       setPlacing(false);
     }
   };
+
+  // Enquanto reconcilia a volta do banco, evita piscar "carrinho vazio"/login.
+  if (isReturn && !paidOrder && !pixOrder) {
+    return (
+      <main className="container page" style={{ maxWidth: 520 }}>
+        <div className="panel center">
+          {error ? (
+            <>
+              <div className="empty__mark" style={{ fontSize: 40 }}>⚠️</div>
+              <p className="badge badge--danger" style={{ marginBottom: 14 }}>{error}</p>
+              <button className="btn btn--primary" onClick={() => navigate("/conta")}>Ver meus pedidos</button>
+            </>
+          ) : (
+            <p className="muted">Confirmando seu pagamento…</p>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   if (!customer) {
     return (

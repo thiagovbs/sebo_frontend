@@ -113,6 +113,8 @@ export const api = {
   // Pedidos
   checkout: (body) => request(`/orders/checkout`, { method: "POST", body, customer: true }),
   confirmPix: (id) => request(`/orders/${id}/confirm-pix`, { method: "POST", customer: true }),
+  startOpenFinance: (id) => request(`/orders/${id}/openfinance`, { method: "POST", customer: true }),
+  confirmOpenFinance: (id) => request(`/orders/${id}/confirm-openfinance`, { method: "POST", customer: true }),
 
   // Open Finance (status público)
   openFinanceStatus: () => request(`/open-finance/status`),

@@ -15,16 +15,16 @@ export function AppProvider({ children }) {
   const [customer, setCustomer] = useState(null);
   const [cart, setCart] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const [openFinance, setOpenFinance] = useState({ jsr: false, pix_qr: false, available: false });
+  const [openFinance, setOpenFinance] = useState({ jsr: false, redirect: false, pix_qr: false, available: false });
   const toastId = useRef(0);
 
   // Métodos de pagamento disponíveis (configurados no admin).
   const refreshOpenFinance = useCallback(async () => {
     try {
       const s = await api.openFinanceStatus();
-      setOpenFinance({ jsr: !!s.jsr, pix_qr: !!s.pix_qr, available: !!s.available });
+      setOpenFinance({ jsr: !!s.jsr, redirect: !!s.redirect, pix_qr: !!s.pix_qr, available: !!s.available });
     } catch {
-      setOpenFinance({ jsr: false, pix_qr: false, available: false });
+      setOpenFinance({ jsr: false, redirect: false, pix_qr: false, available: false });
     }
   }, []);
   useEffect(() => { refreshOpenFinance(); }, [refreshOpenFinance]);

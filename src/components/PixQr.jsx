@@ -6,9 +6,10 @@ import { useApp } from "../context/AppContext";
 // Pagamento por PIX QR clássico: mostra o BR Code (QR + copia e cola). O cliente
 // paga no app do banco; aqui, sem PSP na demo, confirma pelo botão.
 export default function PixQr({ order, onPaid }) {
-  const { toast } = useApp();
+  const { toast, openFinance } = useApp();
   const [dataUrl, setDataUrl] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,24 @@ export default function PixQr({ order, onPaid }) {
     }
   };
 
+  // Jornada Open Finance com redirect: a loja cria um consentimento único na
+  // iniciadora e leva o cliente ao banco para aprovar aquele pagamento.
+  const payOpenFinance = async () => {
+    setRedirecting(true);
+    try {
+      const o = await api.startOpenFinance(order.id);
+      if (o.payment_login_url) {
+        window.location.href = o.payment_login_url; // mesma aba: volta ao checkout
+      } else {
+        toast("Não foi possível iniciar o pagamento no banco", "err");
+        setRedirecting(false);
+      }
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Falha ao iniciar o pagamento", "err");
+      setRedirecting(false);
+    }
+  };
+
   return (
     <div className="panel center">
       <h2 className="panel__title" style={{ fontSize: 26 }}>Pague com PIX</h2>
@@ -60,6 +79,19 @@ export default function PixQr({ order, onPaid }) {
       <button className="btn btn--sm" style={{ marginTop: 8 }} onClick={copy}>
         {copied ? "copiado ✓" : "copiar código"}
       </button>
+
+      {openFinance.redirect && (
+        <>
+          <div className="divider" />
+          <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+            Ou autorize direto no seu banco pelo <strong>Open Finance</strong> — você
+            revisa o valor e aprova o pagamento, sem copiar código.
+          </p>
+          <button className="btn btn--block" onClick={payOpenFinance} disabled={redirecting}>
+            {redirecting ? "Redirecionando…" : "Autorizar no meu banco (Open Finance) ↗"}
+          </button>
+        </>
+      )}
 
       <div className="divider" />
 
