@@ -13,10 +13,13 @@ e faz o checkout via **PIX Open Finance**.
 - **Conta do cliente** — login (e-mail + senha) e autocadastro (`/cadastro`) com
   CPF, telefone, data de nascimento, **vários endereços** (com **CEP → ViaCEP**
   preenchendo o resto) e **vários cartões** de crédito.
-- **Checkout** — dois métodos de PIX, mostrados só quando disponíveis:
+- **Checkout** — três jornadas de PIX, mostradas só quando disponíveis:
   - **PIX QR clássico (copia e cola)** — exibe o BR Code para pagar no app do banco.
-  - **PIX Open Finance (jornada JSR)** — o cliente autoriza o Sebo uma vez e paga
-    sem redirect.
+  - **PIX Open Finance com redirect** — na tela do QR, o botão "Autorizar no meu
+    banco" leva o cliente à detentora para aprovar aquele pagamento (consentimento
+    único); ao voltar, o checkout reconcilia e confirma.
+  - **PIX Open Finance JSR (sem redirect)** — o cliente autoriza o Sebo uma vez e
+    paga sem redirect.
 - **Painel de admin** (`/admin`) — dashboard de vendas, produtos, pedidos,
   clientes e a seção de integração com a iniciadora.
 
