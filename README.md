@@ -6,6 +6,25 @@ e faz o checkout via **PIX Open Finance**.
 
 **Stack:** React 18 · Vite · react-router-dom · qrcode.
 
+```
+┌────────────┐  REST   ┌───────────────────┐   PISP   ┌──────────────┐        ┌──────────────┐
+│  Frontend  │────────▶│      Backend      │─────────▶│ payment-     │───────▶│ core-banking │
+│ React/Vite │         │   (sebo_backend)  │          │ initiator    │        │ (detentora)  │
+│  (este)    │         │  FastAPI + SQLite │          │ (iniciadora) │        └──────────────┘
+└────────────┘         └───────────────────┘          └──────────────┘
+
+Três jornadas de PIX no checkout
+────────────────────────────────
+1) QR clássico       Mostra o BR Code (QR + copia e cola); o cliente paga no
+   (copia e cola)    app do banco.
+
+2) OF com redirect   Botão "Autorizar no meu banco" leva o cliente à detentora
+   (consent. único)  para aprovar o pagamento; na volta, o checkout confirma.
+
+3) OF JSR            O cliente autoriza o Sebo uma vez (enrollment) e depois
+   (sem redirect)    paga sem sair do site.
+```
+
 ## O que tem
 
 - **Vitrine** — busca por nome, filtro por categoria e ordenação (recentes,
