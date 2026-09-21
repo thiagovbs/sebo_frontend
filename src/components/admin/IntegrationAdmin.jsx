@@ -140,8 +140,11 @@ export default function IntegrationAdmin() {
             Quem recebe e em qual conta o dinheiro cai. Razão social, CNPJ e cidade
             são os mesmos do PIX, acima. Sem isto completo, o boleto não aparece
             para o cliente.
+            {/* A lista traz campo em branco e também valor fora de forma
+                ("Agência tem mais de 4 dígitos"), então o rótulo não pode
+                dizer "faltam". */}
             {cfg && !cfg.boleto_available && cfg.boleto_missing?.length > 0 && (
-              <> Faltam: <strong>{cfg.boleto_missing.join(", ")}</strong>.</>
+              <> Pendente: <strong>{cfg.boleto_missing.join(", ")}</strong>.</>
             )}
           </p>
           <div className="row">
