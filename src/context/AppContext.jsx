@@ -4,6 +4,22 @@ import { api, ApiError, customerToken } from "../api";
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
+// Estado de "nenhum método disponível", e também a forma que o resto do app
+// espera de `openFinance`.
+const SEM_PAGAMENTO = {
+  jsr: false, redirect: false, pix_qr: false, card: false, boleto: false, available: false,
+};
+
+// Copia TUDO o que /open-finance/status devolver, como booleano. Copiar campo
+// por campo era o defeito: quando cartão e boleto entraram na API, ficaram de
+// fora daqui, `openFinance.boleto` era `undefined` e a opção nunca aparecia no
+// checkout -- com a API respondendo que estava disponível. Assim, um método
+// novo no backend passa a aparecer sem ninguém precisar lembrar deste arquivo.
+const comoBooleanos = (status) => ({
+  ...SEM_PAGAMENTO,
+  ...Object.fromEntries(Object.entries(status ?? {}).map(([k, v]) => [k, !!v])),
+});
+
 function initialTheme() {
   const saved = localStorage.getItem("sebo-theme");
   if (saved === "light" || saved === "dark") return saved;
@@ -15,16 +31,15 @@ export function AppProvider({ children }) {
   const [customer, setCustomer] = useState(null);
   const [cart, setCart] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const [openFinance, setOpenFinance] = useState({ jsr: false, redirect: false, pix_qr: false, available: false });
+  const [openFinance, setOpenFinance] = useState(SEM_PAGAMENTO);
   const toastId = useRef(0);
 
   // Métodos de pagamento disponíveis (configurados no admin).
   const refreshOpenFinance = useCallback(async () => {
     try {
-      const s = await api.openFinanceStatus();
-      setOpenFinance({ jsr: !!s.jsr, redirect: !!s.redirect, pix_qr: !!s.pix_qr, available: !!s.available });
+      setOpenFinance(comoBooleanos(await api.openFinanceStatus()));
     } catch {
-      setOpenFinance({ jsr: false, redirect: false, pix_qr: false, available: false });
+      setOpenFinance(SEM_PAGAMENTO);
     }
   }, []);
   useEffect(() => { refreshOpenFinance(); }, [refreshOpenFinance]);
