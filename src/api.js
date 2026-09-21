@@ -112,7 +112,8 @@ export const api = {
 
   // Pedidos
   checkout: (body) => request(`/orders/checkout`, { method: "POST", body, customer: true }),
-  confirmPix: (id) => request(`/orders/${id}/confirm-pix`, { method: "POST", customer: true }),
+  // Não há confirmação de pagamento pelo cliente: quem vê o dinheiro entrar é
+  // a loja, e a rota mora no admin (adminConfirmPayment).
   startOpenFinance: (id) => request(`/orders/${id}/openfinance`, { method: "POST", customer: true }),
   confirmOpenFinance: (id) => request(`/orders/${id}/confirm-openfinance`, { method: "POST", customer: true }),
 
@@ -123,6 +124,8 @@ export const api = {
   adminLogin: (password) => request(`/admin/login`, { method: "POST", body: { password } }),
   adminStats: (days = 14) => request(`/admin/stats?days=${days}`, { admin: true }),
   adminOrders: () => request(`/admin/orders`, { admin: true }),
+  adminConfirmPayment: (id) =>
+    request(`/admin/orders/${id}/confirm-payment`, { method: "POST", admin: true }),
   adminCustomers: () => request(`/admin/customers`, { admin: true }),
   adminCustomer: (id) => request(`/admin/customers/${id}`, { admin: true }),
   adminDeleteDevice: (id) => request(`/admin/customers/${id}/device`, { method: "DELETE", admin: true }),

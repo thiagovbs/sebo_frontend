@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import QRCode from "qrcode";
 import { api, ApiError, brl } from "../api";
 import { useApp } from "../context/AppContext";
 
 // Pagamento por PIX QR clássico: mostra o BR Code (QR + copia e cola). O cliente
-// paga no app do banco; aqui, sem PSP na demo, confirma pelo botão.
-export default function PixQr({ order, onPaid }) {
+// paga no app do banco e o pedido fica aguardando -- quem confirma que o
+// dinheiro caiu é a LOJA, no admin. O cliente não declara pagamento: ele não é
+// quem vê o extrato.
+export default function PixQr({ order }) {
   const { toast, openFinance } = useApp();
   const [dataUrl, setDataUrl] = useState("");
-  const [confirming, setConfirming] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -26,18 +28,6 @@ export default function PixQr({ order, onPaid }) {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast("Não foi possível copiar", "err");
-    }
-  };
-
-  const confirm = async () => {
-    setConfirming(true);
-    try {
-      const paid = await api.confirmPix(order.id);
-      onPaid(paid);
-    } catch (e) {
-      toast(e instanceof ApiError ? e.message : "Falha ao confirmar", "err");
-    } finally {
-      setConfirming(false);
     }
   };
 
@@ -96,11 +86,12 @@ export default function PixQr({ order, onPaid }) {
       <div className="divider" />
 
       <p className="muted" style={{ fontSize: 13 }}>
-        Após pagar no seu banco, confirme aqui. <em>(Demo: sem PSP, a confirmação é manual.)</em>
+        Depois de pagar no seu banco, o pedido é liberado quando a loja
+        identificar o recebimento.
       </p>
-      <button className="btn btn--primary btn--block" style={{ marginTop: 10 }} onClick={confirm} disabled={confirming}>
-        {confirming ? "Confirmando…" : "Já efetuei o pagamento"}
-      </button>
+      <Link className="btn btn--primary btn--block" style={{ marginTop: 10 }} to="/conta">
+        Acompanhar em Minha conta
+      </Link>
     </div>
   );
 }

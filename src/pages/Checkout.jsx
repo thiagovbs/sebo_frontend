@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError, brl } from "../api";
 import { useApp } from "../context/AppContext";
+import Boleto from "../components/Boleto";
 import DeviceLink from "../components/DeviceLink";
 import PixQr from "../components/PixQr";
+
+const CARTAO_NOVO = "novo";
 
 export default function Checkout() {
   const { customer, cart, refreshCart, openFinance, toast } = useApp();
@@ -12,12 +15,22 @@ export default function Checkout() {
 
   const [paidOrder, setPaidOrder] = useState(null);
   const [pixOrder, setPixOrder] = useState(null); // PIX QR aguardando pagamento
+  const [boletoOrder, setBoletoOrder] = useState(null); // boleto emitido
   const [addresses, setAddresses] = useState([]);
   const [addressId, setAddressId] = useState(null);
-  const [method, setMethod] = useState(null); // "pix_qr" | "jsr"
+  const [method, setMethod] = useState(null); // "pix_qr" | "jsr" | "card" | "boleto"
   const [deviceReady, setDeviceReady] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
+
+  // Cartões salvos do cadastro, e o formulário de um novo. O número digitado
+  // vive só neste estado: ele vai na requisição e não é guardado em lugar
+  // nenhum -- nem aqui, nem no banco.
+  const [cards, setCards] = useState([]);
+  const [cardId, setCardId] = useState(null);
+  const [newCard, setNewCard] = useState({
+    number: "", holder: "", expiry: "", cvv: "", label: "", save: false,
+  });
 
   // Volta da jornada Open Finance com redirect: reconcilia o pedido pela
   // iniciadora e mostra o desfecho (pago ou ainda aguardando).
@@ -34,11 +47,13 @@ export default function Checkout() {
       .finally(() => setSearchParams({}, { replace: true }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Método padrão: prefere PIX QR (mais simples); senão JSR.
+  // Método padrão: prefere PIX QR (mais simples); senão JSR, cartão, boleto.
   useEffect(() => {
     if (method) return;
     if (openFinance.pix_qr) setMethod("pix_qr");
     else if (openFinance.jsr) setMethod("jsr");
+    else if (openFinance.card) setMethod("card");
+    else if (openFinance.boleto) setMethod("boleto");
   }, [openFinance, method]);
 
   // Endereços do cliente (para escolher a entrega).
@@ -51,18 +66,54 @@ export default function Checkout() {
     });
   }, [customer]);
 
+  // Cartões salvos. O padrão vem pré-selecionado; sem nenhum, abre o
+  // formulário de um novo -- que é o caminho de quem está comprando a primeira
+  // vez.
+  useEffect(() => {
+    if (!customer) return;
+    api.listPaymentMethods(customer.id).then((list) => {
+      setCards(list);
+      const def = list.find((c) => c.is_default) || list[0];
+      setCardId(def ? def.id : CARTAO_NOVO);
+    });
+  }, [customer]);
+
+  const setCardField = (k) => (e) =>
+    setNewCard({ ...newCard, [k]: k === "save" ? e.target.checked : e.target.value });
+
   const place = async () => {
     setPlacing(true);
     setError("");
     try {
-      const order = await api.checkout({ customer_id: customer.id, address_id: addressId, method });
+      const body = { customer_id: customer.id, address_id: addressId, method };
+      if (method === "card") {
+        if (cardId === CARTAO_NOVO) {
+          body.card = {
+            number: newCard.number.replace(/\D/g, ""),
+            holder: newCard.holder,
+            expiry: newCard.expiry,
+            cvv: newCard.cvv,
+            label: newCard.label,
+            save: newCard.save,
+          };
+        } else {
+          body.payment_method_id = cardId;
+        }
+      }
+      const order = await api.checkout(body);
       refreshCart();
-      if (method === "pix_qr") setPixOrder(order); // mostra o QR
-      else setPaidOrder(order); // JSR conclui na hora
+      // Limpa o cartão digitado da memória do navegador assim que ele sai.
+      setNewCard({ number: "", holder: "", expiry: "", cvv: "", label: "", save: false });
+      if (method === "pix_qr") setPixOrder(order);
+      else if (method === "boleto") setBoletoOrder(order);
+      else setPaidOrder(order); // JSR e cartão concluem na hora
     } catch (e) {
       if (e instanceof ApiError && e.detail && e.detail.need_enrollment) {
         setDeviceReady(false);
         setError(e.detail.message || "Autorize o pagamento para continuar.");
+      } else if (e instanceof ApiError && e.detail && e.detail.message) {
+        // Recusa do cartão e boleto indisponível trazem a razão no detalhe.
+        setError(e.detail.message);
       } else {
         setError(e instanceof ApiError ? e.message : "Falha no pagamento");
       }
@@ -110,7 +161,15 @@ export default function Checkout() {
           <h2 className="panel__title" style={{ fontSize: 30 }}>Pagamento confirmado</h2>
           <p className="muted" style={{ marginBottom: 18 }}>
             Pedido #{paidOrder.id} · {brl(paidOrder.total)}
+            {paidOrder.card_last4 && (
+              <> · {paidOrder.card_brand} ****{paidOrder.card_last4}</>
+            )}
           </p>
+          {paidOrder.card_authorization && (
+            <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>
+              Autorização <code>{paidOrder.card_authorization}</code>
+            </p>
+          )}
           <button className="btn btn--primary" onClick={() => navigate("/conta")}>Ver meus pedidos</button>
         </div>
       </main>
@@ -120,12 +179,36 @@ export default function Checkout() {
   if (pixOrder) {
     return (
       <main className="container page" style={{ maxWidth: 520 }}>
-        <PixQr order={pixOrder} onPaid={setPaidOrder} />
+        <PixQr order={pixOrder} />
+      </main>
+    );
+  }
+
+  if (boletoOrder) {
+    return (
+      <main className="container page" style={{ maxWidth: 520 }}>
+        <Boleto order={boletoOrder} />
       </main>
     );
   }
 
   const items = cart?.items || [];
+  const cartaoPronto =
+    cardId !== CARTAO_NOVO ||
+    (newCard.number.replace(/\D/g, "").length >= 13 && newCard.holder.trim() && newCard.expiry.trim() && newCard.cvv.trim());
+  const podePagar =
+    method === "pix_qr" ||
+    method === "boleto" ||
+    (method === "card" && cartaoPronto) ||
+    (method === "jsr" && deviceReady);
+
+  const rotuloDoBotao = () => {
+    if (placing) return "Processando…";
+    if (method === "pix_qr") return `Gerar PIX de ${brl(cart.total)}`;
+    if (method === "boleto") return `Gerar boleto de ${brl(cart.total)}`;
+    if (method === "card") return `Pagar ${brl(cart.total)} no cartão`;
+    return `Pagar ${brl(cart.total)} com PIX`;
+  };
 
   return (
     <main className="container page" style={{ maxWidth: 720 }}>
@@ -210,6 +293,24 @@ export default function Checkout() {
                       </div>
                     </label>
                   )}
+                  {openFinance.card && (
+                    <label className="pay-choice">
+                      <input type="radio" name="method" checked={method === "card"} onChange={() => setMethod("card")} />
+                      <div>
+                        <div style={{ fontWeight: 600 }}>💳 Cartão de crédito</div>
+                        <div className="list-item__meta">Use um cartão salvo ou informe outro na hora.</div>
+                      </div>
+                    </label>
+                  )}
+                  {openFinance.boleto && (
+                    <label className="pay-choice">
+                      <input type="radio" name="method" checked={method === "boleto"} onChange={() => setMethod("boleto")} />
+                      <div>
+                        <div style={{ fontWeight: 600 }}>🧾 Boleto bancário</div>
+                        <div className="list-item__meta">A loja emite a linha digitável; o pedido fica reservado até o vencimento.</div>
+                      </div>
+                    </label>
+                  )}
                 </div>
 
                 {/* JSR precisa do dispositivo autorizado. */}
@@ -217,15 +318,82 @@ export default function Checkout() {
                   <DeviceLink customerId={customer.id} onRegistered={() => setDeviceReady(true)} />
                 )}
 
+                {method === "card" && (
+                  <div className="stack">
+                    {cards.map((c) => (
+                      <label key={c.id} className="list-item" style={{ cursor: "pointer" }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{c.brand} ****{c.last4}</div>
+                          <div className="list-item__meta">
+                            {c.label}{c.holder ? ` · ${c.holder}` : ""}{c.expiry ? ` · val. ${c.expiry}` : ""}
+                          </div>
+                        </div>
+                        <input type="radio" name="card" checked={cardId === c.id} onChange={() => setCardId(c.id)} />
+                      </label>
+                    ))}
+                    <label className="list-item" style={{ cursor: "pointer" }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>Usar outro cartão</div>
+                        <div className="list-item__meta">Os dados vão apenas nesta compra.</div>
+                      </div>
+                      <input type="radio" name="card" checked={cardId === CARTAO_NOVO} onChange={() => setCardId(CARTAO_NOVO)} />
+                    </label>
+
+                    {cardId === CARTAO_NOVO && (
+                      <div className="stack" style={{ marginTop: 4 }}>
+                        <div className="field">
+                          <label className="label">Número do cartão</label>
+                          <input
+                            className="input"
+                            inputMode="numeric"
+                            autoComplete="cc-number"
+                            maxLength={23}
+                            value={newCard.number}
+                            onChange={setCardField("number")}
+                            placeholder="0000 0000 0000 0000"
+                          />
+                        </div>
+                        <div className="field">
+                          <label className="label">Nome impresso no cartão</label>
+                          <input className="input" autoComplete="cc-name" value={newCard.holder} onChange={setCardField("holder")} />
+                        </div>
+                        <div className="row">
+                          <div className="field">
+                            <label className="label">Validade</label>
+                            <input className="input" autoComplete="cc-exp" maxLength={7} value={newCard.expiry} onChange={setCardField("expiry")} placeholder="MM/AA" />
+                          </div>
+                          <div className="field">
+                            <label className="label">Código de segurança</label>
+                            <input className="input" inputMode="numeric" autoComplete="cc-csc" maxLength={4} value={newCard.cvv} onChange={setCardField("cvv")} placeholder="123" />
+                          </div>
+                        </div>
+                        <label className="list-item" style={{ cursor: "pointer" }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>Salvar este cartão</div>
+                            {/* Dito na tela porque é verdade e importa: o número
+                                não fica guardado em lugar nenhum. */}
+                            <div className="list-item__meta">
+                              Guardamos só bandeira, quatro últimos dígitos, nome e validade.
+                            </div>
+                          </div>
+                          <input type="checkbox" checked={newCard.save} onChange={setCardField("save")} />
+                        </label>
+                        {newCard.save && (
+                          <div className="field">
+                            <label className="label">Apelido (opcional)</label>
+                            <input className="input" value={newCard.label} onChange={setCardField("label")} placeholder="Cartão principal" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {error && <p className="badge badge--danger" style={{ margin: "14px 0" }}>{error}</p>}
 
-                {(method === "pix_qr" || (method === "jsr" && deviceReady)) && (
+                {podePagar && (
                   <button className="btn btn--primary btn--block" style={{ marginTop: 16 }} onClick={place} disabled={placing}>
-                    {placing
-                      ? "Processando…"
-                      : method === "pix_qr"
-                      ? `Gerar PIX de ${brl(cart.total)}`
-                      : `Pagar ${brl(cart.total)} com PIX`}
+                    {rotuloDoBotao()}
                   </button>
                 )}
               </>
