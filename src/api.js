@@ -65,6 +65,9 @@ export const api = {
     return request(`/products?${qs.toString()}`);
   },
   getProduct: (id) => request(`/products/${id}`),
+  // Pelo SKU de quem publicou: é o endereço público do produto, usado como
+  // link de destino dos anúncios (o catálogo do Meta exige um por item).
+  getProductBySku: (sku) => request(`/products/sku/${encodeURIComponent(sku)}`),
   listCategories: () => request(`/products/categories`),
   // Upload de imagem: o backend converte para base64 (data URI) e devolve.
   uploadProductImage: async (file) => {
