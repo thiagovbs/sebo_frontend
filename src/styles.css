@@ -626,3 +626,98 @@ table.data tbody tr:hover { background: var(--surface-2); }
   .toolbar { grid-template-columns: 1fr; }
   .brand__tag { display: none; }
 }
+
+/* ==========================================================================
+   Ficha do boleto (impressão / PDF)
+   Preto sobre branco de propósito, mesmo no tema escuro: boleto é papel, e o
+   que a leitora de código de barras precisa é contraste.
+   ========================================================================== */
+
+.boleto-doc {
+  position: relative;
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  max-width: 720px;
+  margin: 0 auto;
+  /* A tarja é girada e mais larga que a ficha: sem isto ela empurra a página
+     inteira para o lado, e aparece rolagem horizontal. */
+  overflow: hidden;
+}
+
+.boleto-doc__topo {
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 2px solid #000; padding: 6px 10px;
+}
+.boleto-doc__banco {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  border-right: 2px solid #000; padding-right: 10px; white-space: nowrap;
+}
+.boleto-doc__linha {
+  flex: 1; text-align: right; font-size: clamp(11px, 2.4vw, 15px); font-weight: 700;
+  letter-spacing: 0.3px; overflow-wrap: anywhere;
+}
+
+.boleto-doc__grade { display: grid; grid-template-columns: 1fr 180px; }
+.boleto-doc__grade--5 { grid-template-columns: repeat(5, 1fr); }
+.boleto-doc__cheio { border-right: 1px solid #000; }
+
+.boleto-doc__campo {
+  padding: 3px 8px 5px; border-bottom: 1px solid #000; min-width: 0;
+}
+.boleto-doc__grade > .boleto-doc__campo + .boleto-doc__campo { border-left: 1px solid #000; }
+.boleto-doc__rotulo {
+  display: block; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.4px; color: #444;
+}
+.boleto-doc__valor { display: block; overflow-wrap: anywhere; }
+.boleto-doc__valor--grande { font-size: 15px; font-weight: 700; text-align: right; }
+.boleto-doc__sub { font-size: 11px; color: #333; }
+.boleto-doc__instrucoes { font-size: 11px; }
+
+.boleto-doc__barcode { padding: 12px 10px 6px; }
+/* O código de barras do boleto tem largura física definida (cerca de 103 mm).
+   Esticá-lo na largura da página engrossaria tudo proporcionalmente e sairia
+   do tamanho que a leitora espera. */
+.boleto-doc__barras { display: block; width: 100%; max-width: 400px; }
+.boleto-doc__rodape {
+  margin: 0; padding: 0 10px 8px; font-size: 10px; color: #444;
+}
+
+/* A tarja existe porque os números são calculados de verdade: sem ela, o PDF
+   passaria por cobrança legítima. */
+.boleto-doc__tarja {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: clamp(20px, 5.5vw, 46px);
+  font-weight: 700; letter-spacing: 6px; color: rgba(138, 43, 34, 0.18);
+  transform: rotate(-16deg); pointer-events: none; z-index: 2;
+  white-space: nowrap;
+}
+
+.boleto-doc-acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+
+/* Impressão: só a ficha vai para o papel.
+   A ficha é renderizada por portal no `body` (ver `Boleto.jsx`), então esconder
+   o `#root` tira a aplicação inteira de uma vez -- inclusive do fluxo, que é o
+   que evita uma folha em branco antes do boleto. Depois é preciso desfazer a
+   caixa do modal: ela é fixa, rolável e recortada em 90vh, e em papel isso
+   cortaria a ficha na primeira página. */
+@media print {
+  #root { display: none !important; }
+  .overlay, .no-print { display: none !important; }
+  .modal, .modal__card, .modal__body {
+    position: static; display: block; overflow: visible; max-height: none;
+    width: auto; margin: 0; padding: 0;
+    background: none; box-shadow: none; border: 0; border-radius: 0;
+  }
+  .boleto-doc { max-width: none; box-shadow: none; }
+  .boleto-doc__tarja {
+    color: rgba(0, 0, 0, 0.16);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  @page { margin: 12mm; }
+}

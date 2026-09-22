@@ -4,6 +4,7 @@ import { api, ApiError, brl } from "../api";
 import { lookupCep } from "../cep";
 import { useApp } from "../context/AppContext";
 import OrderStatus from "../components/OrderStatus";
+import { FichaModal } from "../components/Boleto";
 import DeviceLink from "../components/DeviceLink";
 import LoginForm from "../components/LoginForm";
 
@@ -239,9 +240,26 @@ function PaymentMethods({ customer, toast }) {
 
 function Orders({ customer }) {
   const [orders, setOrders] = useState(null);
+  // Boleto aberto no histórico. A tela do checkout some quando a pessoa sai
+  // dela, e o boleto vence dias depois: sem isto, quem fechou a aba ficava sem
+  // a linha digitável.
+  const [ficha, setFicha] = useState(null);
+  const [carregando, setCarregando] = useState(0);
   useEffect(() => {
     api.customerOrders(customer.id).then(setOrders).catch(() => setOrders([]));
   }, [customer.id]);
+
+  const abrirBoleto = async (id) => {
+    setCarregando(id);
+    try {
+      setFicha(await api.boletoDocument(id));
+    } catch {
+      // Sem toast aqui: o histórico não tem o contexto de erro do checkout.
+      setFicha(null);
+    } finally {
+      setCarregando(0);
+    }
+  };
 
   return (
     <div className="panel">
@@ -269,8 +287,20 @@ function Orders({ customer }) {
             <span className="muted" style={{ fontSize: 13 }}>{new Date(o.created_at).toLocaleString("pt-BR")}</span>
             <span className="price" style={{ fontSize: 20 }}>{brl(o.total)}</span>
           </div>
+          {o.payment_method === "boleto" && o.boleto_digitable_line && (
+            <button
+              className="btn btn--sm"
+              style={{ marginTop: 10 }}
+              onClick={() => abrirBoleto(o.id)}
+              disabled={carregando === o.id}
+            >
+              {carregando === o.id ? "montando…" : "ver boleto / salvar PDF"}
+            </button>
+          )}
         </div>
       ))}
+
+      {ficha && <FichaModal ficha={ficha} onClose={() => setFicha(null)} />}
     </div>
   );
 }

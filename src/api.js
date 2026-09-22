@@ -114,6 +114,9 @@ export const api = {
   checkout: (body) => request(`/orders/checkout`, { method: "POST", body, customer: true }),
   // Não há confirmação de pagamento pelo cliente: quem vê o dinheiro entrar é
   // a loja, e a rota mora no admin (adminConfirmPayment).
+  // Ficha do boleto (para imprimir/salvar em PDF). Autenticada: leva nome,
+  // documento e endereço do pagador, que o pedido não devolve.
+  boletoDocument: (id) => request(`/orders/${id}/boleto`, { customer: true }),
   startOpenFinance: (id) => request(`/orders/${id}/openfinance`, { method: "POST", customer: true }),
   confirmOpenFinance: (id) => request(`/orders/${id}/confirm-openfinance`, { method: "POST", customer: true }),
 
