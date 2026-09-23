@@ -35,7 +35,11 @@ export default function ProductModal({ product, onClose }) {
               </p>
             )}
 
-            {product.description && <p style={{ marginTop: 16, lineHeight: 1.6 }}>{product.description}</p>}
+            {product.description && (
+              <p className="texto-longo" style={{ marginTop: 16, lineHeight: 1.6 }}>
+                {product.description}
+              </p>
+            )}
 
             <div className="divider" />
 

@@ -74,7 +74,11 @@ export default function Product() {
           <h1 style={{ fontSize: 32, marginTop: 10 }}>{product.name}</h1>
           {product.brand && <p className="muted" style={{ marginTop: 4 }}>{product.brand}</p>}
           {product.condition && <p style={{ marginTop: 12 }}><span className="badge">🏷️ {product.condition}</span></p>}
-          {product.description && <p style={{ marginTop: 16, lineHeight: 1.6 }}>{product.description}</p>}
+          {product.description && (
+              <p className="texto-longo" style={{ marginTop: 16, lineHeight: 1.6 }}>
+                {product.description}
+              </p>
+            )}
 
           <div className="divider" />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>

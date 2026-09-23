@@ -411,6 +411,10 @@ button { font-family: inherit; }
   width: min(860px, 100%);
   max-height: 90vh; overflow: hidden;
   display: grid; grid-template-columns: 42% 1fr;
+  /* A linha precisa caber no cartão. Com altura automática ela cresce com o
+     conteúdo, o corpo fica maior que o cartão e o `overflow: hidden` acima
+     CORTA a descrição -- é o corpo que tem que rolar, não o cartão que esconde. */
+  grid-template-rows: minmax(0, 1fr);
   background: var(--bg); border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-lift);
   animation: pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -418,7 +422,16 @@ button { font-family: inherit; }
 @keyframes pop { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: none; } }
 .modal__cover { background: var(--surface-2); }
 .modal__cover img { width: 100%; height: 100%; object-fit: cover; }
-.modal__body { padding: 30px 32px; overflow-y: auto; }
+/* `min-height: 0` é o que faz o `overflow-y` valer: item de grid tem
+   `min-height: auto` e NÃO encolhe abaixo do conteúdo, então uma descrição
+   longa era cortada pelo `overflow: hidden` do cartão -- sem barra de rolagem,
+   sem jeito de ler o resto. */
+.modal__body { padding: 30px 32px; overflow-y: auto; min-height: 0; }
+
+/* Texto escrito por gente: as quebras de linha são a formatação.
+   `pre-wrap` as preserva sem interpretar marcação -- o que vem do cadastro é
+   TEXTO, e renderizá-lo como HTML seria abrir a vitrine para script alheio. */
+.texto-longo { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---------------------------------------------------------------- Panels */
 
@@ -621,7 +634,14 @@ table.data tbody tr:hover { background: var(--surface-2); }
 
 @media (max-width: 860px) {
   .two-col { grid-template-columns: 1fr; }
-  .modal__card { grid-template-columns: 1fr; max-height: 92vh; overflow-y: auto; }
+  /* Numa coluna a capa e o corpo ficam em linhas DIFERENTES: a capa fica com a
+     altura dela (limitada abaixo) e o corpo com o resto, rolando. Herdar a
+     linha única do desktop espremia a capa a zero -- a imagem sumia. */
+  .modal__card {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    max-height: 92vh; overflow: hidden;
+  }
   .modal__cover { max-height: 240px; }
   .toolbar { grid-template-columns: 1fr; }
   .brand__tag { display: none; }
