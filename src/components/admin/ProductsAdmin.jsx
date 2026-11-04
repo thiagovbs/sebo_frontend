@@ -83,6 +83,19 @@ export default function ProductsAdmin() {
     load();
   };
 
+  const restore = async (p) => {
+    // O PUT substitui o produto inteiro; ProductIn tem os mesmos campos que a
+    // listagem devolve, então reenviamos o produto como está, só com active.
+    const { id, created_at, ...body } = p;
+    try {
+      await api.updateProduct(id, { ...body, active: true });
+      toast(`"${p.name}" reativado`);
+      load();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Falha ao reativar", "err");
+    }
+  };
+
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   return (
@@ -108,9 +121,13 @@ export default function ProductsAdmin() {
                     <td className="num">{p.stock}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button className="btn btn--ghost btn--sm" onClick={() => edit(p)}>editar</button>
-                      {p.active && (
+                      {p.active ? (
                         <button className="btn btn--ghost btn--sm" style={{ color: "var(--danger)" }} onClick={() => remove(p)}>
                           desativar
+                        </button>
+                      ) : (
+                        <button className="btn btn--ghost btn--sm" onClick={() => restore(p)}>
+                          reativar
                         </button>
                       )}
                     </td>
