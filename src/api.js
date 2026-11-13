@@ -105,6 +105,7 @@ export const api = {
   // Dispositivo (jornada JSR)
   getDevice: (id) => request(`/customers/${id}/device`, { customer: true }),
   enrollDevice: (id) => request(`/customers/${id}/device/enroll`, { method: "POST", customer: true }),
+  revokeDevice: (id) => request(`/customers/${id}/device`, { method: "DELETE", customer: true }),
 
   // Carrinho
   getCart: (id) => request(`/cart/${id}`, { customer: true }),

@@ -69,6 +69,21 @@ export default function DeviceLink({ customerId, onRegistered, compact = false }
     else toast("Ainda não autorizado — conclua no banco", "err");
   };
 
+  const revoke = async () => {
+    if (!window.confirm("Desativar o pagamento por PIX Open Finance? Nas próximas compras você precisará autorizar de novo.")) return;
+    setBusy(true);
+    try {
+      await api.revokeDevice(customerId);
+      setDevice({ enrolled: false, status: null, enrollment_id: "", account_id: "" });
+      setLoginUrl("");
+      toast("Pagamento por PIX desativado");
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Falha ao desativar", "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (device === null) return <p className="muted">Verificando autorização…</p>;
 
   if (device.status === "REGISTERED") {
@@ -80,6 +95,9 @@ export default function DeviceLink({ customerId, onRegistered, compact = false }
           {!compact && <div className="list-item__meta">O Sebo pode iniciar PIX na sua conta, sem redirect (JSR).</div>}
         </div>
         <span className="badge badge--ok">ativo</span>
+        <button className="btn btn--ghost btn--sm" style={{ color: "var(--danger)" }} onClick={revoke} disabled={busy}>
+          {busy ? "Desativando…" : "desativar"}
+        </button>
       </div>
     );
   }
