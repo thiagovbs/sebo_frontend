@@ -195,8 +195,9 @@ function PaymentMethods({ customer, toast }) {
         <button className="btn btn--sm" onClick={() => setOpen((o) => !o)}>{open ? "Cancelar" : "+ Novo"}</button>
       </div>
       <p className="panel__hint">
-        Só bandeira, 4 últimos dígitos, titular e validade — nunca o número completo ou o CVV.
-        No checkout, o pagamento é PIX via Open Finance.
+        Guardamos apenas a bandeira, o final do cartão, o titular e a validade. O número
+        completo e o código de segurança (CVV) nunca ficam salvos. Os cartões cadastrados
+        aqui podem ser usados para pagar no checkout.
       </p>
 
       {open && (
